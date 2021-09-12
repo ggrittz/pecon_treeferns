@@ -1,7 +1,7 @@
 library(raster)
 library(rgdal)
 
-bios=c(1,3,4,8,9,12,15) # nomes das camadas 
+bios=c(1,3,4,8,9,12,15) #bioclimate layers 
 {
   
   env=list(
