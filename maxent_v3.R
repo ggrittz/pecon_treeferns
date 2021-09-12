@@ -5,13 +5,13 @@ library(dplyr)
 library(ENMeval)
 library(ROCR)
 
-# climate database
-cl='chelsa' #chelsa ou wc
+####Climate database to be modeled
+cl='chelsa' #chelsa or 'wc' for worldclim
 
-# data.frame com as coordenadas das spp
+####Dataframe with coordinates
 data = read.csv('banco de dados/data_ref.csv',sep=';')
 
-sp1=unique(data$sp) # carrega os nomes das spp para usar no loop
+sp1=unique(data$sp) #species names to loop
 
 {
   res.eval=list()
@@ -19,33 +19,33 @@ sp1=unique(data$sp) # carrega os nomes das spp para usar no loop
     
     print(paste('Modelando',j))
     
-    # carrega os registros da sp modelada
+    ####Loading the registers of the species to be modeled
     occ=data.frame(filter(data,sp==j)[,c('x','y')],sp=1)
     occ=na.omit(unique(data.frame(occ,extract(env$current[[1]],occ[,c('x','y')])))) [,c('x','y','sp')]
     
-    # filtragem espacial
+    ####Spatial thinning
     if(nrow(occ)>15){
       occ=ecospat.occ.desaggregation(occ,0.2)
     }
-    # gerando pseudoausencias
+    ####Pseudoabsences
     bg=data.frame(randomPoints(env$current[[1]],10000),sp=0)
     
     
-    # particionando espacialmente os registros
+    ####Spatially partitioning the registres in blocks
     fold=ENMeval::get.block(occ,bg)
     occ=data.frame(occ,fold=fold$occ.grp)
     bg=data.frame(bg,fold=fold$bg.grp)
     
-    # Criando o data.frame final
+    ####Final dataframe
     md=rbind(occ,bg)
     md=data.frame(md,extract(env$current,md[,c('x','y')]))
     
-    # grid com os parâmetros
+    ####Hypertunning parameters grid
     grid=expand.grid(beta=seq(0.5,5,by=.5),
                      fc=c('L','H', 'LQ','LQP','LQH','LQHP','LQHPT'),
                      AIC=NA,auc=NA,boyce=NA)
     
-   # run maxent 
+   ####Running MaxEnt 
     res=list()
     for (i in 1:nrow(grid)) {
       for (k in 1:5) {
@@ -69,7 +69,7 @@ sp1=unique(data$sp) # carrega os nomes das spp para usar no loop
         }
       }
       
-      # evaluation
+      ####Evaluation
       pred=do.call('rbind',res)
       AIC=calc.aicc(get.params(md1),occ[,1:2],r)[1,1]
       
@@ -84,14 +84,14 @@ sp1=unique(data$sp) # carrega os nomes das spp para usar no loop
       print(i)
     }
     
-    # seleciona os melhores parametros (menor aic)
+    #Selecting best fit model
     best=grid %>%
       arrange((AIC)) %>%
       head(1)
       
     res.eval[j]=list(best)
     
-    # roda um novo modelo com os melhores parametros
+    ####Running again, but only the best fit model new
 
       md.final=maxent(md[,5:ncol(md)],
                       md$sp,
@@ -100,7 +100,7 @@ sp1=unique(data$sp) # carrega os nomes das spp para usar no loop
     
     
     
-    ###### projetando o modelo para os rasters de cada cenario
+    ####Projecting the model in each future environmental layers (RCP26, RCP85)
       for (c in names(env)) {
         proj=env[[c]]
         names(proj)=paste('bio',bios,sep = '')
@@ -108,7 +108,7 @@ sp1=unique(data$sp) # carrega os nomes das spp para usar no loop
         writeRaster(proj, paste('mapas/v3/',cl,'/',j,'_',c,'.tif',sep=''),overwrite=T)
       }
   }
-  # salva os valores obtidos na avaliacao
+  ####Saving results
    result= do.call(rbind,res.eval)
    write.csv(result,paste('mapas/v3/',cl,'/results.csv',sep=''))
 }
