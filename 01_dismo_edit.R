@@ -1,3 +1,5 @@
+####Function that enables hypertuning of MaxEnt parameters inside dismo library
+
 {
   prepPara <- function(userfeatures=NULL, #NULL=autofeature, could be any combination of # c("L", "Q", "H", "H", "P")
                        responsecurves=TRUE,
